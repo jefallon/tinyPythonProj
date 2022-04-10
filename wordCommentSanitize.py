@@ -18,6 +18,10 @@ class DocxZip:
         if "word/document.xml" in self.files.keys():
             self.track_changes()
 
+        self.footnotes()
+
+        self.header1()
+
         self.replace_file()
 
     def get_internal_files(self):
@@ -34,9 +38,43 @@ class DocxZip:
         docs_new = str()
         for doc in docs:
             if isinstance(doc, bytes):
-                new_doc = re.sub(r'w:author="[^"]*"', "", doc.decode())
+                new_doc = re.sub(r'w:(author|initials|date)="[^"]*"', "", doc.decode())
                 docs_new += new_doc
         self.files["word/document.xml"] = docs_new
+
+    def footnotes(self):
+        people = self.files["word/footnotes.xml"]
+        ppl_new = str()
+        for ppl in people:
+            if isinstance(ppl, bytes):
+                new_ppl = re.sub(r'w:(author|date)=\"[^"]*\"', "", ppl.decode())
+                ppl_new += new_ppl
+        self.files["word/footnotes.xml"] = ppl_new
+
+    def people(self):
+        people = self.files["word/people.xml"]
+        ppl_new = str()
+        for ppl in people:
+            if isinstance(ppl, bytes):
+                new_ppl = re.sub(
+                    r'w15:author=\"[^"]*\"', r"w15:author=\"Unknown\"", ppl.decode()
+                )
+                ppl_new += new_ppl
+        self.files["word/people.xml"] = ppl_new
+
+    def header1(self):
+        comments = self.files["word/header1.xml"]
+        comments_new = str()
+        for comment in comments:
+            if isinstance(comment, bytes):
+                new_comment = comment.decode()
+                new_comment = re.sub(
+                    r'w:(date|author|initials)="[^"]*"', "", new_comment
+                )
+                # new_comment = re.sub(r'w:author="[^"]*"', "", new_comment)
+                # new_comment = re.sub(r'w:initials="[^"]*"', "", new_comment)
+                comments_new += new_comment
+        self.files["word/header1.xml"] = comments_new
 
     def simple_comments(self):
         comments = self.files["word/comments.xml"]
