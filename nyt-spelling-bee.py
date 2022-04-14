@@ -14,7 +14,8 @@ def make_url():
 
 
 def parse_page(url):
-    html = urllib.request.urlopen(url)
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    html = urllib.request.urlopen(req)
     htmlParse = BeautifulSoup(html, "html.parser")
     paras = [para.get_text() for para in htmlParse.find_all("p")]
     return paras
@@ -37,7 +38,7 @@ def word_strings(letters, max_len, stems):
     candidates = set()
     for stem in stems:
         for tail_len in range(2, max_len - 1):
-            # tails is going to be a problem if there are any long words
+            # tails is going to be a problem if there are any long words - it tends to start having serious problems at 10 letters
             for tail in product(letters, repeat=tail_len):
                 word = stem + "".join(tail)
                 # tails = set(
@@ -46,6 +47,7 @@ def word_strings(letters, max_len, stems):
                 # for tail in tails:
                 # word = stem + tail
                 if (center in word) and wordnet.synsets(word):
+                    print(word)
                     candidates.add(word)
     return candidates
 
