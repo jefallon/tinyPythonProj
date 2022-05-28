@@ -4,8 +4,58 @@ import urllib.request
 import re
 from nltk.corpus import wordnet
 from itertools import product
+from joblib import Parallel, delayed
+from multiprocessing import Pool
 
 # wordnet.synsets('word')
+
+
+class Puzzle:
+    def __init__(self, year, month, day, processes=1):
+        self.year = year
+        self.month = month
+        self.day = day
+        self.processes = processes
+
+    def make_url(self):
+        url = f"https://www.nytimes.com/{self.year}/{self.month}/{self.day}/crosswords/spelling-bee-forum.html"
+        self.url = url
+
+    def get_puzzle(self):
+        req = urllib.request.Request(self.url, headers={"User-Agent": "Mozilla/5.0"})
+        html = urllib.request.urlopen(req)
+        htmlParse = BeautifulSoup(html, "html.parser")
+        self.paras = [para.get_text() for para in htmlParse.find_all("p")]
+
+    def parse_paras(self):
+        for i, p in enumerate(self.paras):
+            if p.startswith("Center letter"):
+                self.letters = self.paras[i + 1].split()
+                self.center = self.letters[0]
+            if p.startswith("WORDS"):
+                word_lens = self.paras[i + 1].split(chr(931))[0].strip().split()
+                self.max_len = int(word_lens[-1])
+            elif p.startswith("Two letter list"):
+                self.stems = re.findall("([A-Z]{2})-", self.paras[i + 1])
+
+    def get_words(self):
+        candidates = set()
+        ###
+        processes_pool = Pool(self.processes)
+        candidates = processes_pool.map(self.search_stem, self.stems)
+        ###
+        # for stem in self.stems:
+        #     candidates.update(self.search_stem(stem))
+        self.words = candidates
+
+    def search_stem(self, stem):
+        candidates = set()
+        for tail_len in range(2, self.max_len - 1):
+            for tail in product(self.letters, repeat=tail_len):
+                word = stem + "".join(tail)
+                if (self.center in word) and wordnet.synsets(word):
+                    candidates.add(word)
+        return candidates
 
 
 def make_url():
@@ -52,18 +102,39 @@ def word_strings(letters, max_len, stems):
     return candidates
 
 
+# def word_strings(letters, max_len, stems):
+#     parallel_pool = Parallel(n_jobs=-1)
+#     center = letters[0]
+#     candidates = set()
+#     for stem in stems:
+#         for tail_len in range(2, max_len - 1):
+#             tails = product(letters, repeat=tail_len)
+#             delayed_tails = [
+#                 delayed(complete_word)(stem, tail, center) for tail in tails
+#             ]
+#             print(parallel_pool(delayed_tails))
+#             # candidates.update(this_candidates)
+#     return candidates
+
+# def complete_word(stem, tail, center):
+#     word = stem + "".join(tail)
+#     if (center in word) and wordnet.synsets(word):
+#         return word
+
+
 def main():
-    url = make_url()
+    puzzle = Puzzle(args.y, args.m, args.d, args.p)
+    puzzle.make_url()
     try:
-        paras = parse_page(url)
+        puzzle.get_puzzle()
     except:
         print(
             "####\nCheck date: may be entered incorrectly, or no hints page exists for that date\n####"
         )
         return -1
-    letters, max_len, stems = parse_paras(paras)
-    candidates = word_strings(letters, max_len, stems)
-    print(candidates)
+    puzzle.parse_paras()
+    puzzle.get_words()
+    print(puzzle.words)
 
 
 if __name__ == "__main__":
@@ -71,5 +142,6 @@ if __name__ == "__main__":
     parser.add_argument("y", type=str)
     parser.add_argument("m", type=str)
     parser.add_argument("d", type=str)
+    parser.add_argument("p", type=int, default=1)
     args = parser.parse_args()
     main()
