@@ -16,6 +16,7 @@ class Puzzle:
         self.month = month
         self.day = day
         self.processes = processes
+        self.words = None
 
     def make_url(self):
         url = f"https://www.nytimes.com/{self.year}/{self.month}/{self.day}/crosswords/spelling-bee-forum.html"
@@ -25,18 +26,30 @@ class Puzzle:
         req = urllib.request.Request(self.url, headers={"User-Agent": "Mozilla/5.0"})
         html = urllib.request.urlopen(req)
         htmlParse = BeautifulSoup(html, "html.parser")
-        self.paras = [para.get_text() for para in htmlParse.find_all("p")]
+        self.paras = [para.get_text().strip() for para in htmlParse.find_all("p")]
+        self.table = htmlParse.find('table')
 
     def parse_paras(self):
         for i, p in enumerate(self.paras):
             if p.startswith("Center letter"):
                 self.letters = self.paras[i + 1].split()
                 self.center = self.letters[0]
-            if p.startswith("WORDS"):
-                word_lens = self.paras[i + 1].split(chr(931))[0].strip().split()
-                self.max_len = int(word_lens[-1])
+#            if p.startswith("WORDS"):
+#                word_lens = self.paras[i + 1].split(chr(931))[0].strip().split()
+#                self.max_len = int(word_lens[-1])
             elif p.startswith("Two letter list"):
-                self.stems = re.findall("([A-Z]{2})-", self.paras[i + 1])
+                self.stems = re.findall("([a-z]{2})-", self.paras[i + 1])
+
+    def len_table(self):
+        rows = self.table.find_all('tr')
+        table = []
+        for row in rows:
+            cols = row.find_all('td')
+            cols = [ele.text.strip() for ele in cols]
+            table.append([ele for ele in cols if ele])
+        self.table = table
+        self.max_len = int(table[0][-2])
+
 
     def get_words(self):
         candidates = set()
@@ -133,6 +146,7 @@ def main():
         )
         return -1
     puzzle.parse_paras()
+    puzzle.len_table()
     puzzle.get_words()
     print(puzzle.words)
 
