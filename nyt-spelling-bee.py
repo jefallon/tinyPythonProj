@@ -34,7 +34,7 @@ class Puzzle:
         for i, p in enumerate(self.paras):
             if p.startswith("Center letter"):
                 self.letters = self.paras[i + 1].split()
-                self.center = self.letters[0]
+                self.center = self.letters[0].upper()
 #            if p.startswith("WORDS"):
 #                word_lens = self.paras[i + 1].split(chr(931))[0].strip().split()
 #                self.max_len = int(word_lens[-1])
