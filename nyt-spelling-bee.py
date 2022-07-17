@@ -6,6 +6,7 @@ from nltk.corpus import wordnet
 from itertools import product
 from joblib import Parallel, delayed
 from multiprocessing import Pool
+from requests import get
 
 # wordnet.synsets('word')
 
@@ -70,70 +71,15 @@ class Puzzle:
                     candidates.add(word)
         return candidates
 
+    def get_corncob(self):
+        res = get('http://www.mieliestronk.com/corncob_caps.txt')
+        self.corncob = res.text
 
-def make_url():
-    url = f"https://www.nytimes.com/{args.y}/{args.m}/{args.d}/crosswords/spelling-bee-forum.html"
-    return url
-
-
-def parse_page(url):
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-    html = urllib.request.urlopen(req)
-    htmlParse = BeautifulSoup(html, "html.parser")
-    paras = [para.get_text() for para in htmlParse.find_all("p")]
-    return paras
-
-
-def parse_paras(paras):
-    for i, p in enumerate(paras):
-        if p.startswith("Center letter"):
-            letters = paras[i + 1].split()
-        if p.startswith("WORDS"):
-            word_lens = paras[i + 1].split(chr(931))[0].strip().split()
-            max_len = int(word_lens[-1])
-        elif p.startswith("Two letter list"):
-            stems = re.findall("([A-Z]{2})-", paras[i + 1])
-    return letters, max_len, stems
-
-
-def word_strings(letters, max_len, stems):
-    center = letters[0]
-    candidates = set()
-    for stem in stems:
-        for tail_len in range(2, max_len - 1):
-            # tails is going to be a problem if there are any long words - it tends to start having serious problems at 10 letters
-            for tail in product(letters, repeat=tail_len):
-                word = stem + "".join(tail)
-                # tails = set(
-                #     map(lambda x: "".join(x), set(product(letters, repeat=tail_len)))
-                # )
-                # for tail in tails:
-                # word = stem + tail
-                if (center in word) and wordnet.synsets(word):
-                    print(word)
-                    candidates.add(word)
-    return candidates
-
-
-# def word_strings(letters, max_len, stems):
-#     parallel_pool = Parallel(n_jobs=-1)
-#     center = letters[0]
-#     candidates = set()
-#     for stem in stems:
-#         for tail_len in range(2, max_len - 1):
-#             tails = product(letters, repeat=tail_len)
-#             delayed_tails = [
-#                 delayed(complete_word)(stem, tail, center) for tail in tails
-#             ]
-#             print(parallel_pool(delayed_tails))
-#             # candidates.update(this_candidates)
-#     return candidates
-
-# def complete_word(stem, tail, center):
-#     word = stem + "".join(tail)
-#     if (center in word) and wordnet.synsets(word):
-#         return word
-
+    def corncob_words(self):
+        letters = ''.join(self.letters).upper()
+        candidates = re.findall(f'\n([{letters}]{{4,}})\r', self.corncob)
+        # candidates = [w for w in candidates if self.center in w]
+        self.words = candidates
 
 def main():
     puzzle = Puzzle(args.y, args.m, args.d, args.p)
@@ -146,8 +92,10 @@ def main():
         )
         return -1
     puzzle.parse_paras()
-    puzzle.len_table()
-    puzzle.get_words()
+    # puzzle.len_table()
+    # puzzle.get_words()
+    puzzle.get_corncob()
+    puzzle.corncob_words()
     print(puzzle.words)
 
 
