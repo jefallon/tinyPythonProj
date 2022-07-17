@@ -78,7 +78,7 @@ class Puzzle:
     def corncob_words(self):
         letters = ''.join(self.letters).upper()
         candidates = re.findall(f'\n([{letters}]{{4,}})\r', self.corncob)
-        # candidates = [w for w in candidates if self.center in w]
+        candidates = [w for w in candidates if self.center in w]
         self.words = candidates
 
 def main():
